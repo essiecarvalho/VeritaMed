@@ -4,6 +4,7 @@ import requests
 from deep_translator import GoogleTranslator # O nosso novo cérebro poliglota!
 import os
 from dotenv import load_dotenv
+from keep_alive import keep_alive
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -55,4 +56,5 @@ load_dotenv()
 # Puxa a senha lá de dentro
 TOKEN = os.getenv('DISCORD_TOKEN')
 
+keep_alive() # Inicia o servidor web
 bot.run(TOKEN)
