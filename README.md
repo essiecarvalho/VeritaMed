@@ -23,7 +23,7 @@ A imensa maioria da literatura médica e científica de ponta é publicada em in
 # ⋆ Como executar o projeto localmente
 
 1. Clone este repositório no seu ambiente:
-git clone
+git clone [https://github.com/essiecarvalho/VeritaMed](https://github.com/essiecarvalho/VeritaMed)
 
 2. Instale as dependências necessárias:
 pip install discord.py requests deep-translator
