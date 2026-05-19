@@ -111,7 +111,7 @@ async def painel(ctx):
     for emoji in CARGOS_EMOJIS.keys():
         await mensagem.add_reaction(emoji)
 
-# O Cérebro de Pesquisa Científica
+# Comando 0: Cérebro de Pesquisa Científica
 @bot.command()
 async def artigo(ctx, *, termo_de_busca):
     await ctx.send(f"🔍 Vasculhando os arquivos médicos globais sobre **{termo_de_busca}** e traduzindo...")
@@ -140,30 +140,36 @@ async def artigo(ctx, *, termo_de_busca):
         
     await ctx.send(mensagem)
 
-# 🧠 COMANDO 1: O Mastigador de Abstracts com IA
+# COMANDO 1: O Mastigador de Abstracts com IA
 @bot.command()
 async def resumo(ctx, artigo_id):
     await ctx.send(f"🧠 Conectando à IA para ler e resumir o artigo **{artigo_id}**... um momento!")
     
-    # Busca o texto completo do abstract no PubMed
-    url_abstract = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={artigo_id}&rettype=abstract&retmode=text"
-    resposta = requests.get(url_abstract)
-    abstract_texto = resposta.text
-    
-    if "cannot get document summary" in abstract_texto.lower() or len(abstract_texto) < 20:
-        await ctx.send("❌ Não consegui encontrar o resumo desse artigo. Verifique se o ID está correto!")
-        return
+    try:
+        # 1. Busca o texto completo do abstract no PubMed
+        url_abstract = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={artigo_id}&rettype=abstract&retmode=text"
+        resposta = requests.get(url_abstract)
+        abstract_texto = resposta.text
+        
+        # PubMed às vezes não tem o resumo de artigos muito antigos
+        if "cannot get document summary" in abstract_texto.lower() or len(abstract_texto) < 20:
+            await ctx.send(f"❌ O PubMed não disponibilizou o resumo em texto para o ID {artigo_id}. Tente um artigo mais recente!")
+            return
 
-    # Pede para o Gemini traduzir e mastigar o texto
-    prompt = f"Você é um assistente acadêmico de saúde. Traduza e resuma o seguinte abstract médico para o português em 3 tópicos curtos, simples e fáceis de entender:\n\n{abstract_texto}"
-    
-    resposta_ia = modelo_ia.generate_content(prompt)
-    
-    mensagem = f"✨ **Resumo Inteligente do Artigo ({artigo_id})** ✨\n\n{resposta_ia.text}"
-    await ctx.send(mensagem)
+        # 2. Pede para o Gemini mastigar o texto (Usando a função ASYNC para não congelar o bot)
+        prompt = f"Você é um assistente acadêmico de saúde. Traduza e resuma o seguinte abstract médico para o português em 3 tópicos curtos, simples e fáceis de entender:\n\n{abstract_texto}"
+        
+        resposta_ia = await modelo_ia.generate_content_async(prompt)
+        
+        mensagem = f"✨ **Resumo Inteligente do Artigo ({artigo_id})** ✨\n\n{resposta_ia.text}"
+        await ctx.send(mensagem)
+        
+    except Exception as erro:
+        # Se QUALQUER coisa der errado, ele avisa no chat em vez de ficar mudo!
+        await ctx.send(f"⚠️ Oops! Meus circuitos de IA tropeçaram. O erro foi: `{erro}`")
 
 
-# 📚 COMANDO 2: Gerador de ABNT Automático
+# COMANDO 2: Gerador de ABNT Automático
 @bot.command()
 async def abnt(ctx, artigo_id):
     url_detalhes = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id={artigo_id}&retmode=json"
