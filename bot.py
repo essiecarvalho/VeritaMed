@@ -5,16 +5,15 @@ import requests
 from deep_translator import GoogleTranslator
 from dotenv import load_dotenv
 from keep_alive import keep_alive
-import google.generativeai as genai
+from google import genai
 
 # Carrega as senhas do cofre
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 LOG_CHANNEL_ID = os.getenv('LOG_CHANNEL_ID')
 
-# Configura o cérebro da IA (Gemini)
-genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-modelo_ia = genai.GenerativeModel('gemini-1.5-flash')
+cliente_ia = genai.Client(api_key=os.getenv('GEMINI_API_KEY'))
+
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -140,33 +139,32 @@ async def artigo(ctx, *, termo_de_busca):
         
     await ctx.send(mensagem)
 
-# COMANDO 1: O Mastigador de Abstracts com IA
+# 🧠 COMANDO 1: O Mastigador de Abstracts com IA (COM CINTO DE SEGURANÇA)
 @bot.command()
 async def resumo(ctx, artigo_id):
     await ctx.send(f"🧠 Conectando à IA para ler e resumir o artigo **{artigo_id}**... um momento!")
     
     try:
-        # 1. Busca o texto completo do abstract no PubMed
         url_abstract = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={artigo_id}&rettype=abstract&retmode=text"
-        resposta = requests.get(url_abstract)
+        resposta = requests.get(url_abstract, timeout=10)
         abstract_texto = resposta.text
         
-        # PubMed às vezes não tem o resumo de artigos muito antigos
         if "cannot get document summary" in abstract_texto.lower() or len(abstract_texto) < 20:
             await ctx.send(f"❌ O PubMed não disponibilizou o resumo em texto para o ID {artigo_id}. Tente um artigo mais recente!")
             return
 
-        # 2. Pede para o Gemini mastigar o texto (Usando a função ASYNC para não congelar o bot)
         prompt = f"Você é um assistente acadêmico de saúde. Traduza e resuma o seguinte abstract médico para o português em 3 tópicos curtos, simples e fáceis de entender:\n\n{abstract_texto}"
         
-        resposta_ia = await modelo_ia.generate_content_async(prompt)
+        resposta_ia = cliente_ia.models.generate_content(
+            model='gemini-1.5-flash',
+            contents=prompt
+        )
         
         mensagem = f"✨ **Resumo Inteligente do Artigo ({artigo_id})** ✨\n\n{resposta_ia.text}"
         await ctx.send(mensagem)
         
     except Exception as erro:
-        # Se QUALQUER coisa der errado, ele avisa no chat em vez de ficar mudo!
-        await ctx.send(f"⚠️ Oops! Meus circuitos de IA tropeçaram. O erro foi: `{erro}`")
+        await ctx.send(f"⚠️ Oops! Meus circuitos tropeçaram. O erro foi: `{erro}`")
 
 
 # COMANDO 2: Gerador de ABNT Automático

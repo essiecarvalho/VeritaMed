@@ -3,4 +3,4 @@ requests
 deep-translator
 python-dotenv
 flask
-google-generativeai
+google-genai
