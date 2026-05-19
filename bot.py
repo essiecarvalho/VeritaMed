@@ -155,8 +155,9 @@ async def resumo(ctx, artigo_id):
 
         prompt = f"Você é um assistente acadêmico de saúde. Traduza e resuma o seguinte abstract médico para o português em 3 tópicos curtos, simples e fáceis de entender:\n\n{abstract_texto}"
         
-        resposta_ia = cliente_ia.models.generate_content(
-            model='gemini-1.5-flash',
+        # Atualizamos para o 2.5 e adicionamos 'await' e '.aio'
+        resposta_ia = await cliente_ia.aio.models.generate_content(
+            model='gemini-2.5-flash',
             contents=prompt
         )
         
