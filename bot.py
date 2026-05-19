@@ -5,6 +5,16 @@ import requests
 from deep_translator import GoogleTranslator
 from dotenv import load_dotenv
 from keep_alive import keep_alive
+import google.generativeai as genai
+
+# Carrega as senhas do cofre
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+LOG_CHANNEL_ID = os.getenv('LOG_CHANNEL_ID')
+
+# Configura o cérebro da IA (Gemini)
+genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
+modelo_ia = genai.GenerativeModel('gemini-1.5-flash')
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -130,8 +140,66 @@ async def artigo(ctx, *, termo_de_busca):
         
     await ctx.send(mensagem)
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
+# 🧠 COMANDO 1: O Mastigador de Abstracts com IA
+@bot.command()
+async def resumo(ctx, artigo_id):
+    await ctx.send(f"🧠 Conectando à IA para ler e resumir o artigo **{artigo_id}**... um momento!")
+    
+    # Busca o texto completo do abstract no PubMed
+    url_abstract = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&id={artigo_id}&rettype=abstract&retmode=text"
+    resposta = requests.get(url_abstract)
+    abstract_texto = resposta.text
+    
+    if "cannot get document summary" in abstract_texto.lower() or len(abstract_texto) < 20:
+        await ctx.send("❌ Não consegui encontrar o resumo desse artigo. Verifique se o ID está correto!")
+        return
+
+    # Pede para o Gemini traduzir e mastigar o texto
+    prompt = f"Você é um assistente acadêmico de saúde. Traduza e resuma o seguinte abstract médico para o português em 3 tópicos curtos, simples e fáceis de entender:\n\n{abstract_texto}"
+    
+    resposta_ia = modelo_ia.generate_content(prompt)
+    
+    mensagem = f"✨ **Resumo Inteligente do Artigo ({artigo_id})** ✨\n\n{resposta_ia.text}"
+    await ctx.send(mensagem)
+
+
+# 📚 COMANDO 2: Gerador de ABNT Automático
+@bot.command()
+async def abnt(ctx, artigo_id):
+    url_detalhes = f"https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id={artigo_id}&retmode=json"
+    resposta = requests.get(url_detalhes)
+    detalhes = resposta.json().get("result", {}).get(artigo_id, {})
+    
+    if not detalhes:
+        await ctx.send("❌ Artigo não encontrado para gerar a referência.")
+        return
+    
+    # Extrai as informações
+    titulo = detalhes.get("title", "Título indisponível")
+    revista = detalhes.get("fulljournalname", "Revista indisponível")
+    ano = detalhes.get("pubdate", "Ano").split(" ")[0]
+    volume = detalhes.get("volume", "")
+    
+    # Formata os autores para o padrão ABNT (SOBRENOME, Iniciais.)
+    lista_autores = detalhes.get("authors", [])
+    autores_formatados = []
+    
+    for autor in lista_autores:
+        nome = autor.get('name', '')
+        partes = nome.split(' ')
+        if len(partes) > 1:
+            sobrenome = partes[0].upper()
+            iniciais = ' '.join(partes[1:])
+            autores_formatados.append(f"{sobrenome}, {iniciais}.")
+        else:
+            autores_formatados.append(nome.upper())
+            
+    str_autores = "; ".join(autores_formatados)
+    
+    # Monta a referência final
+    referencia = f"{str_autores} {titulo}. **{revista}**, v. {volume}, {ano}. Disponível em: <https://pubmed.ncbi.nlm.nih.gov/{artigo_id}/>."
+    
+    await ctx.send(f"📖 **Sua referência ABNT está pronta:**\n\n{referencia}")
 
 keep_alive()
 bot.run(TOKEN)
