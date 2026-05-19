@@ -28,8 +28,7 @@ A imensa maioria da literatura médica e científica de ponta é publicada em in
 ⋆ Como executar o projeto localmente
 
 1. Clone este repositório no seu ambiente:
-   ```bash
-   git clone [https://github.com/essiecarvalho/VeritaMed](https://github.com/essiecarvalho/VeritaMed)
+  git clone [https://github.com/essiecarvalho/VeritaMed](https://github.com/essiecarvalho/VeritaMed)
 
 2. Instale as dependências necessárias:
 pip install -r requirements.txt
